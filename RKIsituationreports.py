@@ -75,9 +75,12 @@ class RKIsituationreports(RKIcachedreports):
             baseargs["source"] = source
         super(RKIsituationreports,self).__init__(**baseargs)
         
+        self.sit_df = None
+        
     def Parse(self,f):
-        df = pd.read_csv(f,sep=";")
-        print(df)
+        self.sit_df = pd.read_csv(f,sep=";",index_col=0)
+        self.sit_df = self.sit_df.rename(columns={"Unnamed: 0":"date"})
+        print(self.sit_df)
 
 def main():
     situationreports = RKIsituationreports()
