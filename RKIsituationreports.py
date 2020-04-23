@@ -71,19 +71,54 @@ class RKIsituationreports(RKIcachedreports):
     """ Abstracts a collection of RKI's situation reports """
     def __init__(self,source="default",**kwargs):
         baseargs = kwargs
+        self.sit_df = None
         if source != "default":
             baseargs["source"] = source
         super(RKIsituationreports,self).__init__(**baseargs)
         
-        self.sit_df = None
-        
     def Parse(self,f):
+        """Replaces base-class function, postprocess datatypes"""
         self.sit_df = pd.read_csv(f,sep=";",index_col=0)
+        c = self.sit_df.columns
+        for k in c:
+            self.sit_df[k] = self.sit_df[k].convert_dtypes(convert_integer=True)
         self.sit_df = self.sit_df.rename(columns={"Unnamed: 0":"date"})
-        print(self.sit_df)
+    
+    def GetFilteredCopy(self,columns):
+        return self.sit_df.filter(columns,axis=1).copy()
+    
+    def ICU(self,additional_columns=[]):
+        columns = ["hospitalized","ICU_current","ICU_finished","ICU_deaths","ICU_beds","ICU_beds_available","ICU_clinics"]
+        columns += additional_columns
+        icu = self.GetFilteredCopy(columns)
+        for k in columns:
+            icu[k+"_perday"] = icu[k].diff()
+        f,d,c = icu["ICU_finished_perday"],icu["ICU_deaths_perday"],icu["ICU_current_perday"]
+        icu["ICU_entered_perday"] = c+f        
+        return icu 
+    
+    def Symptoms(self,additional_columns=[]):
+        columns = ["with_symptoms_reported","symptom_no_symptoms","symptom_cough","symptom_pneumonia"]
+        columns += additional_columns
+        symptoms = self.GetFilteredCopy(columns)
+        for k in columns:
+            symptoms[k+"_perday"] = symptoms[k].diff()
+        
+        return symptoms
+    
+    def Plot(self):
+        
+        f,d,c = self.sit_df["ICU_finished"].diff(),self.sit_df["ICU_deaths"].diff(),self.sit_df["ICU_current"].diff()
+        entered = c+f
 
 def main():
     situationreports = RKIsituationreports()
+    
+    icu = situationreports.ICU(additional_columns=["deaths","reported"])
+    print(icu)
+    
+    symptoms = situationreports.Symptoms(additional_columns=["deaths"])
+    print(symptoms)
 
 if __name__=="__main__":
 	main()
