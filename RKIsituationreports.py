@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.7
 #coding:utf-8
 
+from io import BytesIO
 import datetime
 from urllib import request
 import os
@@ -37,15 +38,14 @@ class RKIcachedreports(object):
         success = False
         remote_file = request.urlopen(url)
         creation_date = datetime.datetime.fromisoformat(remote_file.readline().decode("utf-8")[:-1])
-#        latest_data = remote_file.read()
+        remote_data = remote_file.read()
         with open(self.storage_location+"/"+self.filename,"wb+") as f:
             f.write((datetime.datetime.now().isoformat()+"\n").encode("utf-8"))
-            f.write(latest_data)
+            f.write(remote_data)
             success = True
         if success:
             print("Fetched remote situation report, as of %s"%(creation_date.isoformat()))
-#            self.Parse(latest_data.decode("utf-8"))
-            self.Parse(remote_file)
+            self.Parse(BytesIO(remote_data))
         return success
     
     def OpenLocal(self,location=None):
