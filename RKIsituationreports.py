@@ -4,6 +4,8 @@
 import datetime
 from urllib import request
 import os
+import pandas as pd
+import numpy as np
 
 class RKIcachedreports(object):
     """Encapsualtes data handling from local cache, try to fetch newer version"""
@@ -35,14 +37,15 @@ class RKIcachedreports(object):
         success = False
         remote_file = request.urlopen(url)
         creation_date = datetime.datetime.fromisoformat(remote_file.readline().decode("utf-8")[:-1])
-        latest_data = remote_file.read()
+#        latest_data = remote_file.read()
         with open(self.storage_location+"/"+self.filename,"wb+") as f:
             f.write((datetime.datetime.now().isoformat()+"\n").encode("utf-8"))
             f.write(latest_data)
             success = True
         if success:
             print("Fetched remote situation report, as of %s"%(creation_date.isoformat()))
-            self.Parse(latest_data.decode("utf-8"))
+#            self.Parse(latest_data.decode("utf-8"))
+            self.Parse(remote_file)
         return success
     
     def OpenLocal(self,location=None):
@@ -56,23 +59,25 @@ class RKIcachedreports(object):
                     return False
                 else:
                     print("Use locally cached situation report last fetched %s ago"%age)
-                    self.Parse(f.read())
+                    self.Parse(f)#f.read())
                     return True
             return False
     
-    def Parse(self,file_data):
+    def Parse(self,f):
         """Parse the inputdata -- Replace in derived class"""
-        print("Parse",file_data)
+        print("Parse",f.read())
         
 class RKIsituationreports(RKIcachedreports):
+    """ Abstracts a collection of RKI's situation reports """
     def __init__(self,source="default",**kwargs):
         baseargs = kwargs
         if source != "default":
             baseargs["source"] = source
         super(RKIsituationreports,self).__init__(**baseargs)
         
-    def Parse(self,file_data):
-        print("Parse situation report",file_data)
+    def Parse(self,f):
+        df = pd.read_csv(f,sep=";")
+        print(df)
 
 def main():
     situationreports = RKIsituationreports()
